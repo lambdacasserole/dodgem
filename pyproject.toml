@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "dodgem"
+version = "0.1.0"
+description = "Version bumper for Python."
+readme = "README.md"
+repository = "https://github.com/lambdacasserole/dodgem.git"
+authors = ["Saul Johnson <saul.a.johnson@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
