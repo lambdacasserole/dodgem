@@ -210,6 +210,7 @@ def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -
 @click.option('--major-tag', default='[major]', help='The commit message tag indicating a major version bump.')
 @click.option('--minor-tag', default='[minor]', help='The commit message tag indicating a minor version bump.')
 @click.option('--patch-tag', default=None, help='The commit message tag indicating a patch version bump.')
+@click.option('--ignore-tag-case', is_flag=True, default=False, help='Ignores capitalization in commit message tags.')
 @click.option('--quiet', is_flag=True, default=False, help='Suppresses all extraneous output.')
 @click.option('--bump-major', is_flag=True, default=False, help='If given, performs a major version bump.')
 @click.option('--bump-minor', is_flag=True, default=False, help='If given, performs a minor version bump.')
@@ -224,12 +225,13 @@ def main(
     major_tag: str,
     minor_tag: str,
     patch_tag: Optional[str],
+    ignore_tag_case: bool,
     quiet: bool,
     bump_major: bool,
     bump_minor: bool,
     bump_patch: bool,
     dry: bool):
-    """ The main function for the utility.
+    """ Bump version numbers in a project file.
     """
 
     # Switch logging on or off.
@@ -283,6 +285,13 @@ def main(
     # Extract version from project file data.
     old_version = extract_version(project_file_data, parsed_file_format)
     new_version = old_version
+
+    # Case correction if tag case should be ignored.
+    if ignore_tag_case:
+        commit_message = commit_message.lower()
+        major_tag = major_tag.lower()
+        minor_tag = minor_tag.lower()
+        patch_tag = patch_tag.lower() if patch_tag is not None else None
 
     # Perform version bump depending on explicit args and/or commit message/tags.
     if bump_major or (commit_message is not None and major_tag in commit_message):
