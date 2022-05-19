@@ -16,7 +16,7 @@ import tomlkit
 from blessings import Terminal
 from semver import VersionInfo
 
-from typing import Optional, Mapping
+from typing import Any, Optional
 
 
 term = Terminal()
@@ -25,6 +25,7 @@ term = Terminal()
 
 
 KNOWN_PROJECT_FILENAMES = [
+    'setup.py',
     'pyproject.toml',
 ]
 """ A list of known project filenames to automatically detect, in order of priority.
@@ -47,6 +48,10 @@ class ProjectFileType(Enum):
     """ Specifies a TOML project file.
     """
 
+    PYTHON = 2
+    """ Specified a Python project file.
+    """
+
 
 class ProjectFileFormat(Enum):
     """ An enumeration of project file formats (e.g. Poetry).
@@ -58,6 +63,10 @@ class ProjectFileFormat(Enum):
 
     POETRY = 1
     """ Specifies the file format used by the Poetry dependency manager.
+    """
+
+    SETUPTOOLS = 2
+    """ Specified the setuptools setup.py file format.
     """
 
 
@@ -105,6 +114,7 @@ def get_file_type(type: str) -> ProjectFileType:
     """
     return {
         'toml': ProjectFileType.TOML,
+        'py': ProjectFileType.PYTHON,
     }.get(type, ProjectFileType.UNKNOWN)
 
 
@@ -129,6 +139,7 @@ def get_file_format(format: str) -> ProjectFileFormat:
     """
     return {
         'poetry': ProjectFileFormat.POETRY,
+        'setuptools': ProjectFileFormat.SETUPTOOLS,
     }.get(format, ProjectFileFormat.UNKNOWN)
 
 
@@ -144,37 +155,46 @@ def detect_file_format(path: str) -> ProjectFileFormat:
         for line in file:
             if re.match('^\\s*\\[\\s*tool\\.poetry\\s*\\]\\s*$', line): # This line indicates a Poetry project.
                 return ProjectFileFormat.POETRY
+            elif re.match('^\\s*(from|import)\\s*setuptools\\s*(import\\s+.+)?$', line): # Setuptools setup.py file.
+                return ProjectFileFormat.SETUPTOOLS
     return ProjectFileFormat.UNKNOWN # Format not recognized.
 
 
-def extract_version(data: Mapping, format: ProjectFileFormat) -> VersionInfo:
+def extract_version(data: Any, format: ProjectFileFormat) -> VersionInfo:
     """ Extracts the current semver from the provided project file data according to the format given.
 
     Args:
-        data (Mapping): The project data to extract the version from.
+        data (Any): The project data to extract the version from.
         format (ProjectFileFormat): The file format of the project data.
     """
     try:
         if format == ProjectFileFormat.POETRY:
             return VersionInfo.parse(data['tool']['poetry']['version'])
+        elif format == ProjectFileFormat.SETUPTOOLS:
+            matches = re.search('setup\\(.*version\\s*=\\s*[\'\\"]([0-9\\.]+)[\'\\"]', data, re.DOTALL)
+            return VersionInfo.parse((matches[1]))
     except:
         pass
     fatal(f'Could not locate a well-formed semver to bump.')
 
 
-def inject_version(data: Mapping, format: ProjectFileFormat, version: VersionInfo):
+def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -> Any:
     """ Injects the specified semver into the provided project file data according to the format given.
 
     Args:
-        data (Mapping): The project data to inject the version into.
+        data (Any): The project data to inject the version into.
         format (ProjectFileFormat): The file format of the project data.
         version (VersionInfo): The semver to inject.
     """
     try:
         if format == ProjectFileFormat.POETRY:
             data['tool']['poetry']['version'] = str(version)
-            return
-    except:
+            return data
+        elif format == ProjectFileFormat.SETUPTOOLS:
+            return re.sub('(setup\\(.*version\\s*=\\s*[\'\\"])([0-9\\.]+)([\'\\"])', f'\\g<1>{version}\\g<3>', data, 1,
+                re.DOTALL)
+    except Exception as e:
+        print(e)
         pass
     fatal(f'Could not inject new semver into project file data.')
 
@@ -257,6 +277,8 @@ def main(
     with open(file, 'r', encoding='utf-8') as file_handle:
         if parsed_file_type == ProjectFileType.TOML:
             project_file_data = tomlkit.load(file_handle)
+        else:
+            project_file_data = file_handle.read()
 
     # Extract version from project file data.
     old_version = extract_version(project_file_data, parsed_file_format)
@@ -273,10 +295,12 @@ def main(
 
     # If dry flag not specified, write back to disk...
     if not dry:
-        inject_version(project_file_data, parsed_file_format, new_version) # Inject new version.
+        project_file_data = inject_version(project_file_data, parsed_file_format, new_version) # Inject new version.
         with open(file, 'w', encoding='utf-8') as file_handle:
             if parsed_file_type == ProjectFileType.TOML:
                 tomlkit.dump(project_file_data, file_handle)
+            else:
+                file_handle.write(project_file_data)
 
     # Print out version bump.
     print(f'{old_version} -> {new_version}')
