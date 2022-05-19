@@ -16,7 +16,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/lambdacasserole/dodgem">
-    <img src="logo.svg" alt="Logo" width="128" height="128">
+    <img src="https://raw.githubusercontent.com/lambdacasserole/dodgem/main/logo.svg" alt="Logo" width="128" height="128">
   </a>
 
   <h3 align="center">dodgem</h3>
@@ -278,4 +278,4 @@ The following resources are awesome:
 [license-url]: https://github.com/lambdacasserole/dodgem/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/sauljohnson
-[product-screenshot]: usage.svg
+[product-screenshot]: https://raw.githubusercontent.com/lambdacasserole/dodgem/main/usage.svg
