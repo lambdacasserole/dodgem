@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dodgem"
-version = "1.0.0"
+version = "1.0.1"
 description = "Version bumper for Python."
 readme = "README.md"
 repository = "https://github.com/lambdacasserole/dodgem.git"
