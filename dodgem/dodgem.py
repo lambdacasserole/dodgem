@@ -209,6 +209,7 @@ def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -
 @click.option('--file-format', default=None, help='The file format to parse (defaults to automatic).')
 @click.option('--commit-message', default=None, help='The commit message to infer the version bump from.')
 @click.option('--no-auto-patch',
+    is_flag=True,
     default=False,
     help='If given, disables automatic patch version bump if commit message provided.')
 @click.option('--major-tag', default='[major]', help='The commit message tag indicating a major version bump.')
