@@ -31,6 +31,10 @@ KNOWN_PROJECT_FILENAMES = [
 """ A list of known project filenames to automatically detect, in order of priority.
 """
 
+SEMVER_REGEX = r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?'
+""" The regular expression to use to match semver strings.
+"""
+
 suppress_logging = False
 """ Whether or not to suppress logging for the utility.
 """
@@ -171,7 +175,7 @@ def extract_version(data: Any, format: ProjectFileFormat) -> VersionInfo:
         if format == ProjectFileFormat.POETRY:
             return VersionInfo.parse(data['tool']['poetry']['version'])
         elif format == ProjectFileFormat.SETUPTOOLS:
-            matches = re.search('setup\\(.*version\\s*=\\s*[\'\\"]([0-9\\.]+)[\'\\"]', data, re.DOTALL)
+            matches = re.search('setup\\(.*version\\s*=\\s*[\'\\"](' + SEMVER_REGEX + ')[\'\\"]', data, re.DOTALL)
             return VersionInfo.parse((matches[1]))
     except:
         pass
@@ -210,11 +214,16 @@ def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -
 @click.option('--major-tag', default='[major]', help='The commit message tag indicating a major version bump.')
 @click.option('--minor-tag', default='[minor]', help='The commit message tag indicating a minor version bump.')
 @click.option('--patch-tag', default=None, help='The commit message tag indicating a patch version bump.')
+@click.option('--prerelease-tag', default='[prerelease]', help='The commit message tag indicating a prerelease version bump.')
 @click.option('--ignore-tag-case', is_flag=True, default=False, help='Ignores capitalization in commit message tags.')
 @click.option('--quiet', is_flag=True, default=False, help='Suppresses all extraneous output.')
 @click.option('--bump-major', is_flag=True, default=False, help='If given, performs a major version bump.')
 @click.option('--bump-minor', is_flag=True, default=False, help='If given, performs a minor version bump.')
 @click.option('--bump-patch', is_flag=True, default=False, help='If given, performs a patch version bump.')
+@click.option('--bump-prerelease', is_flag=True, default=False, help='If given, performs a prerelease version bump.')
+@click.option('--bump-build', is_flag=True, default=False, help='If given, performs a build version bump.')
+@click.option('--prerelease-token', default=None, help='The prerelease token to append.')
+@click.option('--build-token', default=None, help='The build token to append.')
 @click.option('--dry', is_flag=True, default=False, help='If given, does not write the version change to disk.')
 def main(
     file: Optional[str],
@@ -225,11 +234,16 @@ def main(
     major_tag: str,
     minor_tag: str,
     patch_tag: Optional[str],
+    prerelease_tag: str,
     ignore_tag_case: bool,
     quiet: bool,
     bump_major: bool,
     bump_minor: bool,
     bump_patch: bool,
+    bump_prerelease: bool,
+    bump_build: bool,
+    prerelease_token: str,
+    build_token: str,
     dry: bool):
     """ Bump version numbers in a project file.
     """
@@ -295,12 +309,18 @@ def main(
 
     # Perform version bump depending on explicit args and/or commit message/tags.
     if bump_major or (commit_message is not None and major_tag in commit_message):
-        new_version = old_version.bump_major()
+        new_version = new_version.bump_major()
     elif bump_minor or (commit_message is not None and minor_tag in commit_message):
-        new_version = old_version.bump_minor()
+        new_version = new_version.bump_minor()
     elif bump_patch or (commit_message is not None and (patch_tag is None or patch_tag in commit_message)):
         if not no_auto_patch:
-            new_version = old_version.bump_patch()
+            new_version = new_version.bump_patch()
+
+    # These versions (prerelease/build metadata) can be bumped independently.
+    if bump_prerelease or (commit_message is not None and prerelease_tag in commit_message):
+        new_version = new_version.bump_prerelease(prerelease_token)
+    if bump_build:
+        new_version = new_version.bump_build(build_token)
 
     # If dry flag not specified, write back to disk...
     if not dry:
