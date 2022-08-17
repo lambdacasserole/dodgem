@@ -313,9 +313,8 @@ def main(
         new_version = new_version.bump_major()
     elif bump_minor or (commit_message is not None and minor_tag in commit_message):
         new_version = new_version.bump_minor()
-    elif bump_patch or (commit_message is not None and (patch_tag is None or patch_tag in commit_message)):
-        if not no_auto_patch:
-            new_version = new_version.bump_patch()
+    elif bump_patch or (commit_message is not None and patch_tag in commit_message) or not no_auto_patch:
+        new_version = new_version.bump_patch()
 
     # These versions (prerelease/build metadata) can be bumped independently.
     if bump_prerelease or (commit_message is not None and prerelease_tag in commit_message):
