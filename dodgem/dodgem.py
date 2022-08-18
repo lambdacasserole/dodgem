@@ -214,7 +214,7 @@ def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -
     help='If given, disables automatic patch version bump if commit message provided.')
 @click.option('--major-tag', default='[major]', help='The commit message tag indicating a major version bump.')
 @click.option('--minor-tag', default='[minor]', help='The commit message tag indicating a minor version bump.')
-@click.option('--patch-tag', default=None, help='The commit message tag indicating a patch version bump.')
+@click.option('--patch-tag', default='[patch]', help='The commit message tag indicating a patch version bump.')
 @click.option('--prerelease-tag', default='[prerelease]', help='The commit message tag indicating a prerelease version bump.')
 @click.option('--ignore-tag-case', is_flag=True, default=False, help='Ignores capitalization in commit message tags.')
 @click.option('--quiet', is_flag=True, default=False, help='Suppresses all extraneous output.')
