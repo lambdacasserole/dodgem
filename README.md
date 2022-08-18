@@ -146,7 +146,7 @@ Options:
   --file-type TEXT         The file type to parse (defaults to automatic).
   --file-format TEXT       The file format to parse (defaults to automatic).
   --commit-message TEXT    The commit message to infer the version bump from.
-  --no-auto-patch BOOLEAN  If given, disables automatic patch version bump if
+  --no-auto-patch          If given, disables automatic patch version bump if
                            commit message provided.
   --major-tag TEXT         The commit message tag indicating a major version
                            bump.
@@ -154,11 +154,17 @@ Options:
                            bump.
   --patch-tag TEXT         The commit message tag indicating a patch version
                            bump.
+  --prerelease-tag TEXT    The commit message tag indicating a prerelease
+                           version bump.
   --ignore-tag-case        Ignores capitalization in commit message tags.
   --quiet                  Suppresses all extraneous output.
   --bump-major             If given, performs a major version bump.
   --bump-minor             If given, performs a minor version bump.
   --bump-patch             If given, performs a patch version bump.
+  --bump-prerelease        If given, performs a prerelease version bump.
+  --bump-build             If given, performs a build version bump.
+  --prerelease-token TEXT  The prerelease token to append.
+  --build-token TEXT       The build token to append.
   --dry                    If given, does not write the version change to
                            disk.
   --help                   Show this message and exit.
@@ -215,6 +221,7 @@ dodgem --commit-message="$(git log -1)" --major-tag='(major)' --minor-tag='(mino
 
 - [x] Support `setuptools` (`setup.py`)
 - [x] Support [Poetry](https://python-poetry.org/)
+- [x] Support prerelease/build versions (shoutout to [@mitchelkoster](https://github.com/mitchelkoster) for the feature idea)
 
 See the [open issues](https://github.com/lambdacasserole/dodgem/issues) for a full list of proposed features (and known issues).
 
@@ -259,6 +266,8 @@ The following resources are awesome:
 * [Best-README-Template](https://github.com/othneildrew/Best-README-Template) was used for this readme
 * [tomlkit](https://github.com/sdispater/tomlkit/) was used for parsing TOML in a way that preserves comments, order, formatting etc.
 * [semver](https://github.com/python-semver/python-semver) was used for parsing and bumping semver numbers
+
+Shoutout to [@mitchelkoster](https://github.com/mitchelkoster) for contributing a load of feature ideas, and rooting out a bunch of bugs and edge cases!
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
