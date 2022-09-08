@@ -158,6 +158,7 @@ Options:
                            version bump.
   --ignore-tag-case        Ignores capitalization in commit message tags.
   --quiet                  Suppresses all extraneous output.
+  --pep-440                Use PEP-440 for version strings.
   --bump-major             If given, performs a major version bump.
   --bump-minor             If given, performs a minor version bump.
   --bump-patch             If given, performs a patch version bump.

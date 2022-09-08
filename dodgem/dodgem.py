@@ -382,7 +382,7 @@ def main(
 
     # Case correction if tag case should be ignored.
     if ignore_tag_case:
-        commit_message = commit_message.lower()
+        commit_message = commit_message.lower() if commit_message is not None else None
         major_tag = major_tag.lower()
         minor_tag = minor_tag.lower()
         patch_tag = patch_tag.lower() if patch_tag is not None else None
