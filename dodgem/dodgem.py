@@ -6,6 +6,7 @@ Since:
     18/05/2021
 """
 
+from curses.ascii import isdigit
 import sys
 import os
 import re
@@ -108,6 +109,79 @@ def detect_project_file() -> Optional[str]:
     return None
 
 
+def from_pep_440_token(token):
+    """ Transforms a PEP-440 compatible version string token into a regular semver string token.
+
+    Args:
+        token (str): The token to transform.
+    Returns:
+        str: The transformed token.
+    """
+    chars = []
+    dotted = False
+    for c in token:
+        if c.isdigit() and not dotted:
+            chars.append('.')
+            dotted = True
+        chars.append(c)
+    return ''.join(chars)
+
+
+def from_pep_440(pep_version_str):
+    """ Trabsforms a PEP-440 compatible version string into a regular semver string.
+
+    Args:
+        pep_version_str (str): The string to transform.
+    Returns:
+        str: The transformed string.
+    """
+    tokens = pep_version_str.split('-')
+    return '-'.join([tokens[0], *list(map(from_pep_440_token, tokens[1:]))])
+
+
+def to_pep_440(semver_str):
+    """ Transforms a regular semver string to a PEP-440 compatible version string.
+
+    Args:
+        semver_str (str): The string to transform.
+    Returns:
+        str: The transformed string.
+    """
+    tokens = semver_str.split('-')
+    return '-'.join([tokens[0], *[t.replace('.', '') for t in tokens[1:]]])
+
+
+def parse_version(semver_str: str, pep_440: bool):
+    """ Parses a semver string.
+
+    Args:
+        semver_str: The string to parse.
+        pep_440: Whether to parse the string as a PEP-440 version string.
+    Returns:
+        VersionInfo: The parsed version.
+    """
+    format_transformer = lambda x: x # Default to no-op for format transformer.
+    if pep_440:
+        format_transformer = from_pep_440 # Use PEP-440 transformer if required.
+    return VersionInfo.parse(format_transformer(semver_str))
+
+
+def render_version(version: VersionInfo, pep_440: str):
+    """ Renders a version as a semver string.
+
+    Args:
+        version: The version to render.
+        pep_440: Whether to render the version as a PEP-440 version string.
+    Returns:
+        str: The rendered version.
+    """
+    format_transformer = lambda x: x # Default to no-op for format transformer.
+    if pep_440:
+        format_transformer = to_pep_440 # Use PEP-440 transformer if required.
+    return format_transformer(str(version))
+
+
+
 def get_file_type(type: str) -> ProjectFileType:
     """ Converts the string representation of a project file type to its corresponding enum member.
 
@@ -164,38 +238,41 @@ def detect_file_format(path: str) -> ProjectFileFormat:
     return ProjectFileFormat.UNKNOWN # Format not recognized.
 
 
-def extract_version(data: Any, format: ProjectFileFormat) -> VersionInfo:
+def extract_version(data: Any, format: ProjectFileFormat, pep_440: bool) -> VersionInfo:
     """ Extracts the current semver from the provided project file data according to the format given.
 
     Args:
         data (Any): The project data to extract the version from.
         format (ProjectFileFormat): The file format of the project data.
+        pep_440 (bool): Whether or not to expect a PEP-440 compatible semver string.
     """
     try:
         if format == ProjectFileFormat.POETRY:
-            return VersionInfo.parse(data['tool']['poetry']['version'])
+            return parse_version(data['tool']['poetry']['version'], pep_440)
         elif format == ProjectFileFormat.SETUPTOOLS:
             matches = re.search('setup\\(.*version\\s*=\\s*[\'\\"](' + SEMVER_REGEX + ')[\'\\"]', data, re.DOTALL)
-            return VersionInfo.parse((matches[1]))
+            return parse_version(matches[1], pep_440)
     except:
         pass
     fatal(f'Could not locate a well-formed semver to bump.')
 
 
-def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -> Any:
+def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo, pep_440: bool) -> Any:
     """ Injects the specified semver into the provided project file data according to the format given.
 
     Args:
         data (Any): The project data to inject the version into.
         format (ProjectFileFormat): The file format of the project data.
         version (VersionInfo): The semver to inject.
+        pep_440 (bool): Whether or not to use PEP-440 compatible semver string.
     """
     try:
+        version_string = render_version(version, pep_440)
         if format == ProjectFileFormat.POETRY:
-            data['tool']['poetry']['version'] = str(version)
+            data['tool']['poetry']['version'] = version_string
             return data
         elif format == ProjectFileFormat.SETUPTOOLS:
-            return re.sub('(setup\\(.*version\\s*=\\s*[\'\\"])([0-9\\.]+)([\'\\"])', f'\\g<1>{version}\\g<3>', data, 1,
+            return re.sub('(setup\\(.*version\\s*=\\s*[\'\\"])([0-9\\.]+)([\'\\"])', f'\\g<1>{version_string}\\g<3>', data, 1,
                 re.DOTALL)
     except Exception as e:
         print(e)
@@ -218,6 +295,7 @@ def inject_version(data: Any, format: ProjectFileFormat, version: VersionInfo) -
 @click.option('--prerelease-tag', default='[prerelease]', help='The commit message tag indicating a prerelease version bump.')
 @click.option('--ignore-tag-case', is_flag=True, default=False, help='Ignores capitalization in commit message tags.')
 @click.option('--quiet', is_flag=True, default=False, help='Suppresses all extraneous output.')
+@click.option('--pep-440', is_flag=True, default=False, help='Use PEP-440 for version strings.')
 @click.option('--bump-major', is_flag=True, default=False, help='If given, performs a major version bump.')
 @click.option('--bump-minor', is_flag=True, default=False, help='If given, performs a minor version bump.')
 @click.option('--bump-patch', is_flag=True, default=False, help='If given, performs a patch version bump.')
@@ -238,6 +316,7 @@ def main(
     prerelease_tag: str,
     ignore_tag_case: bool,
     quiet: bool,
+    pep_440: bool,
     bump_major: bool,
     bump_minor: bool,
     bump_patch: bool,
@@ -298,7 +377,7 @@ def main(
             project_file_data = file_handle.read()
 
     # Extract version from project file data.
-    old_version = extract_version(project_file_data, parsed_file_format)
+    old_version = extract_version(project_file_data, parsed_file_format, pep_440)
     new_version = old_version
 
     # Case correction if tag case should be ignored.
@@ -324,7 +403,7 @@ def main(
 
     # If dry flag not specified, write back to disk...
     if not dry:
-        project_file_data = inject_version(project_file_data, parsed_file_format, new_version) # Inject new version.
+        project_file_data = inject_version(project_file_data, parsed_file_format, new_version, pep_440) # Inject new version.
         with open(file, 'w', encoding='utf-8') as file_handle:
             if parsed_file_type == ProjectFileType.TOML:
                 tomlkit.dump(project_file_data, file_handle)
@@ -332,7 +411,7 @@ def main(
                 file_handle.write(project_file_data)
 
     # Print out version bump.
-    print(f'{old_version} -> {new_version}')
+    print(f'{render_version(old_version, pep_440)} -> {render_version(new_version, pep_440)}')
 
 
 # Run main method if invoked directly.
